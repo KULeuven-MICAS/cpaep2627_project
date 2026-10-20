@@ -43,6 +43,7 @@ module tb_single_port_memory;
 
   // Memory control
   logic        [AddrWidth-1:0] mem_addr;
+  logic                        mem_re;
   logic                        mem_we;
   logic signed [DataWidth-1:0] mem_wr_data;
   logic signed [DataWidth-1:0] mem_rd_data;
@@ -59,6 +60,7 @@ module tb_single_port_memory;
     .clk_i         ( clk_i       ),
     .rst_ni        ( rst_ni      ),
     .mem_addr_i    ( mem_addr    ),
+    .mem_re_i      ( mem_re      ),
     .mem_we_i      ( mem_we      ),
     .mem_wr_data_i ( mem_wr_data ),
     .mem_rd_data_o ( mem_rd_data )
@@ -84,6 +86,7 @@ module tb_single_port_memory;
     clk_i       = 1'b0;
     rst_ni      = 1'b0;
     mem_addr    = '0;
+    mem_re      = '0;
     mem_we      = '0;
     mem_wr_data = '0;
 
@@ -117,8 +120,10 @@ module tb_single_port_memory;
     for (int unsigned iter = 0; iter < NumIterations; iter++) begin
       // Read the data first
       mem_addr = iter;
+      mem_re   = 1'b1;
       // Get data in next cycle
       clk_delay(1);
+      mem_re   = 1'b0;
 
       // Compare read data with golden data
       addr = iter;

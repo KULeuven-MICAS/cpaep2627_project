@@ -57,6 +57,8 @@ module tb_one_mac_gemm;
   logic [AddrWidth-1:0] sram_a_addr;
   logic [AddrWidth-1:0] sram_b_addr;
   logic [AddrWidth-1:0] sram_c_addr;
+  logic                 sram_a_re;
+  logic                 sram_b_re;
 
   // Memory access
   logic signed [ InDataWidth-1:0] sram_a_rdata;
@@ -95,6 +97,7 @@ module tb_one_mac_gemm;
     .clk_i         ( clk_i        ),
     .rst_ni        ( rst_ni       ),
     .mem_addr_i    ( sram_a_addr  ),
+    .mem_re_i      ( sram_a_re    ),
     .mem_we_i      ( '0           ),
     .mem_wr_data_i ( '0           ),
     .mem_rd_data_o ( sram_a_rdata )
@@ -110,6 +113,7 @@ module tb_one_mac_gemm;
     .clk_i         ( clk_i        ),
     .rst_ni        ( rst_ni       ),
     .mem_addr_i    ( sram_b_addr  ),
+    .mem_re_i      ( sram_b_re    ),
     .mem_we_i      ( '0           ),
     .mem_wr_data_i ( '0           ),
     .mem_rd_data_o ( sram_b_rdata )
@@ -125,6 +129,7 @@ module tb_one_mac_gemm;
     .clk_i         ( clk_i        ),
     .rst_ni        ( rst_ni       ),
     .mem_addr_i    ( sram_c_addr  ),
+    .mem_re_i      ( '0           ),
     .mem_we_i      ( sram_c_we    ),
     .mem_wr_data_i ( sram_c_wdata ),
     .mem_rd_data_o ( /* unused */ )
@@ -148,6 +153,8 @@ module tb_one_mac_gemm;
     .sram_a_addr_o  ( sram_a_addr  ),
     .sram_b_addr_o  ( sram_b_addr  ),
     .sram_c_addr_o  ( sram_c_addr  ),
+    .sram_a_re_o    ( sram_a_re    ),
+    .sram_b_re_o    ( sram_b_re    ),
     .sram_a_rdata_i ( sram_a_rdata ),
     .sram_b_rdata_i ( sram_b_rdata ),
     .sram_c_wdata_o ( sram_c_wdata ),

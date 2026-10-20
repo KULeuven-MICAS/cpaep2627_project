@@ -25,6 +25,8 @@
 // - sram_a_addr_o: Address output for SRAM A.
 // - sram_b_addr_o: Address output for SRAM B.
 // - sram_c_addr_o: Address output for SRAM C.
+// - sram_a_re_o  : Read enable output for SRAM A.
+// - sram_b_re_o  : Read enable output for SRAM B.
 // - sram_a_rdata_i: Data input from SRAM A.
 // - sram_b_rdata_i: Data input from SRAM B.
 // - sram_c_wdata_o: Data output to SRAM C.
@@ -47,6 +49,8 @@ module gemm_accelerator_top #(
   output logic        [    AddrWidth-1:0] sram_a_addr_o,
   output logic        [    AddrWidth-1:0] sram_b_addr_o,
   output logic        [    AddrWidth-1:0] sram_c_addr_o,
+  output logic                            sram_a_re_o,
+  output logic                            sram_b_re_o,
   input  logic signed [  InDataWidth-1:0] sram_a_rdata_i,
   input  logic signed [  InDataWidth-1:0] sram_b_rdata_i,
   output logic signed [ OutDataWidth-1:0] sram_c_wdata_o,
@@ -62,6 +66,7 @@ module gemm_accelerator_top #(
   logic [SizeAddrWidth-1:0] N_count;
 
   logic busy;
+  logic mem_re;      // read enable for SRAM A and B
   logic valid_data;  // A/B read data at the MAC inputs is valid
   logic init_save;   // MAC loads the product instead of accumulating
 
@@ -90,6 +95,7 @@ module gemm_accelerator_top #(
     .start_i        ( start_i     ),
     .input_valid_i  ( 1'b1        ),  // Always valid in this simple design
     .result_valid_o ( sram_c_we_o ),
+    .mem_re_o       ( mem_re      ),
     .data_valid_o   ( valid_data  ),
     .init_save_o    ( init_save   ),
     .busy_o         ( busy        ),
@@ -120,7 +126,9 @@ module gemm_accelerator_top #(
   // Align it carefully with the testbench's memory control.
   //---------------------------
 
-  // Input addresses for matrices A and B
+  // Input addresses and read enables for matrices A and B
+  assign sram_a_re_o   = mem_re;
+  assign sram_b_re_o   = mem_re;
   assign sram_a_addr_o = (M_count * K_size_i + K_count);
   assign sram_b_addr_o = (K_count * N_size_i + N_count);
 

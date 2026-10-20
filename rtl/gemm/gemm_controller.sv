@@ -25,6 +25,7 @@
 // - start_i      : Start signal to initiate the GeMM operation.
 // - input_valid_i: Input valid signal indicating data is ready.
 // - result_valid_o: Result valid signal indicating output data is ready.
+// - mem_re_o     : Read enable for SRAM A and B (address is issued now).
 // - data_valid_o : A and B read data at the MAC inputs is valid.
 // - init_save_o  : MAC should load (not accumulate) the product, i.e.
 //                  the data at the MAC inputs is the first k of an output.
@@ -46,6 +47,7 @@ module gemm_controller #(
   input  logic start_i,
   input  logic input_valid_i,
   output logic result_valid_o,
+  output logic mem_re_o,
   output logic data_valid_o,
   output logic init_save_o,
   output logic busy_o,
@@ -219,6 +221,8 @@ module gemm_controller #(
     end
   end
 
+  // Read A and B only in the cycles where the counters issue an address
+  assign mem_re_o       = move_counter;
   assign data_valid_o   = data_valid_q;
   assign init_save_o    = first_k_q;
   assign result_valid_o = result_valid_q;

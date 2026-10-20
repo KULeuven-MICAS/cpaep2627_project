@@ -5,8 +5,10 @@
 // configurable data width and depth. Both reads and writes are
 // synchronous: the read data for the address presented in cycle t
 // appears on mem_rd_data_o in cycle t+1 (one cycle read latency).
-// A cycle with mem_we_i high is a write; the read output then keeps
-// its previous value, like a real single-port SRAM.
+// A read only happens when mem_re_i is high; otherwise the read output
+// keeps its previous value. Reads and writes have separate enables so
+// each can be counted on its own (e.g. for energy logging).
+// Being single-port, mem_re_i and mem_we_i must not be high together.
 //
 // Parameters:
 // - DataWidth: Width of the data bus (default: 8 bits)
@@ -17,6 +19,7 @@
 // - clk_i: Clock input
 // - rst_ni: Active low reset input
 // - mem_addr_i: Memory address input
+// - mem_re_i: Memory read enable input
 // - mem_we_i: Memory write enable input
 // - mem_wr_data_i: Memory write data input
 // - mem_rd_data_o: Memory read data output
@@ -35,6 +38,7 @@ module single_port_memory #(
     input  logic                        clk_i,
     input  logic                        rst_ni,
     input  logic        [AddrWidth-1:0] mem_addr_i,
+    input  logic                        mem_re_i,
     input  logic                        mem_we_i,
     input  logic signed [DataWidth-1:0] mem_wr_data_i,
     output logic signed [DataWidth-1:0] mem_rd_data_o
@@ -47,7 +51,7 @@ module single_port_memory #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       mem_rd_data_o <= '0;
-    end else if (!mem_we_i) begin
+    end else if (mem_re_i) begin
       mem_rd_data_o <= memory[mem_addr_i];
     end
   end
@@ -59,5 +63,12 @@ module single_port_memory #(
       memory[mem_addr_i] <= mem_wr_data_i;
     end
   end
-  
+
+  // Single port: only one access per cycle
+  always @(posedge clk_i) begin
+    if (rst_ni && mem_re_i && mem_we_i) begin
+      $error("%m: mem_re_i and mem_we_i are both high at address %0d", mem_addr_i);
+    end
+  end
+
 endmodule
