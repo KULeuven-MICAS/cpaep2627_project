@@ -1,3 +1,4 @@
+rtl/common/metrics_pkg.sv
 
 rtl/gemm/general_mac_pe.sv
 rtl/common/ceiling_counter.sv

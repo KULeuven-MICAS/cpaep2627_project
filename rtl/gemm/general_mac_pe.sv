@@ -78,8 +78,9 @@ module general_mac_pe #(
   //--------------------------------
   // IMPORTANT! Area logging
   // Make sure to add an area logging mechanic
-  // In this scenario, we reference or call 
-  // the testbench's area variable.
+  // In this scenario, we add to the shared area
+  // variable in metrics_pkg (rtl/common/metrics_pkg.sv),
+  // so this works under any testbench top.
   //
   // In here the area is dependent on the MAC and register.
   // From the document's table:
@@ -90,7 +91,7 @@ module general_mac_pe #(
 
   initial begin
     #0;
-    tb_one_mac_gemm.area += (3*NumInputs) + OutDataWidth/32;
+    metrics_pkg::area += (3*NumInputs) + OutDataWidth/32;
     $display("%m added %d to area", (3*NumInputs) + OutDataWidth/32);
   end
 

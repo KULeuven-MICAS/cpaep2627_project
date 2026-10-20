@@ -169,18 +169,15 @@ module tb_one_mac_gemm;
   `include "includes/test_tasks.svh"
   `include "includes/test_func.svh"
 
-  // Metrics varaibles
-  // Area is at the beginning 0
-  real area = 0;
-  // Energy is measured after every test case
-  real energy;
+  // Metrics variables live in metrics_pkg (rtl/common/metrics_pkg.sv):
+  // - metrics_pkg::area   starts at 0, each module adds its area at time 0
+  // - metrics_pkg::energy starts at 0, accumulated during the tests
 
-  // Reporting area
+  // Reporting area (after the modules have added theirs)
   initial begin
-    area = 0;
     #0;
     #0;
-    $display("\n\n------------\nAREA: %0d\n------------\n\n", area);
+    $display("\n\n------------\nAREA: %0d\n------------\n\n", metrics_pkg::area);
   end
 
   //---------------------------
