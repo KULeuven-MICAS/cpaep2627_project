@@ -75,4 +75,24 @@ module general_mac_pe #(
     end
   end
 
+  //--------------------------------
+  // IMPORTANT! Area logging
+  // Make sure to add an area logging mechanic
+  // In this scenario, we reference or call 
+  // the testbench's area variable.
+  //
+  // In here the area is dependent on the MAC and register.
+  // From the document's table:
+  // 1 multiply = 2; 1 add = 1
+  // 1 MAC = 1 multiply + 1 adder = 2 + 1 = 3
+  // 1 32-bit register = 1
+  //--------------------------------
+
+  initial begin
+    #0;
+    tb_one_mac_gemm.area += (3*NumInputs) + OutDataWidth/32;
+    $display("%m added %d to area", (3*NumInputs) + OutDataWidth/32);
+  end
+
+
 endmodule

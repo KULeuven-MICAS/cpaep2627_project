@@ -162,6 +162,20 @@ module tb_one_mac_gemm;
   `include "includes/test_tasks.svh"
   `include "includes/test_func.svh"
 
+  // Metrics varaibles
+  // Area is at the beginning 0
+  real area = 0;
+  // Energy is measured after every test case
+  real energy;
+
+  // Reporting area
+  initial begin
+    area = 0;
+    #0;
+    #0;
+    $display("\n\n------------\nAREA: %0d\n------------\n\n", area);
+  end
+
   //---------------------------
   // Test control
   //---------------------------
@@ -286,6 +300,8 @@ module tb_one_mac_gemm;
 
     $display("All test tasks completed successfully!");
     $finish;
+    
+
   end
 
 endmodule

@@ -59,4 +59,5 @@ module single_port_memory #(
       memory[mem_addr_i] <= mem_wr_data_i;
     end
   end
+  
 endmodule
