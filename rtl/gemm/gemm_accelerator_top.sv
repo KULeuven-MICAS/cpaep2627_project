@@ -62,8 +62,11 @@ module gemm_accelerator_top #(
   logic [SizeAddrWidth-1:0] N_count;
 
   logic busy;
-  logic valid_data;
-  assign valid_data = start_i || busy;  // Always valid in this simple design
+  logic valid_data;  // A/B read data at the MAC inputs is valid
+  logic init_save;   // MAC loads the product instead of accumulating
+
+  // C address pipeline (see address generation below)
+  logic [AddrWidth-1:0] sram_c_addr_q;
 
   //---------------------------
   // DESIGN NOTE:
@@ -87,6 +90,8 @@ module gemm_accelerator_top #(
     .start_i        ( start_i     ),
     .input_valid_i  ( 1'b1        ),  // Always valid in this simple design
     .result_valid_o ( sram_c_we_o ),
+    .data_valid_o   ( valid_data  ),
+    .init_save_o    ( init_save   ),
     .busy_o         ( busy        ),
     .done_o         ( done_o      ),
     .M_size_i       ( M_size_i    ),
@@ -104,9 +109,12 @@ module gemm_accelerator_top #(
   // are stored in row-major order.
   //
   // Please adjust this part to align with your designed memory layout
-  // The counters are used for the matrix A and matrix B address generation;
-  // for matrix C, the corresponding address is calculated at the previous cycle,
-  // thus adding one cycle delay on c
+  // The counters are used for the matrix A and matrix B address generation.
+  //
+  // The SRAMs have a synchronous read: the A and B addresses issued in
+  // cycle t give data at the MAC in cycle t+1, and the finished C element
+  // is in the MAC output in cycle t+2. So the C address is the counter
+  // value delayed by two cycles, lined up with sram_c_we_o.
   //
   // Just be careful to know on which cycle the addresses are valid.
   // Align it carefully with the testbench's memory control.
@@ -116,12 +124,14 @@ module gemm_accelerator_top #(
   assign sram_a_addr_o = (M_count * K_size_i + K_count);
   assign sram_b_addr_o = (K_count * N_size_i + N_count);
 
-  // Output address for matrix C
+  // Output address for matrix C (two cycle delay)
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
+      sram_c_addr_q <= '0;
       sram_c_addr_o <= '0;
-    end else if (1'b1) begin  // Always valid in this simple design
-      sram_c_addr_o <= (M_count * N_size_i + N_count);
+    end else begin
+      sram_c_addr_q <= (M_count * N_size_i + N_count);
+      sram_c_addr_o <= sram_c_addr_q;
     end
   end
 
@@ -176,7 +186,7 @@ module gemm_accelerator_top #(
     .b_i          ( sram_b_rdata_i         ),
     .a_valid_i    ( valid_data             ),
     .b_valid_i    ( valid_data             ),
-    .init_save_i  ( sram_c_we_o || start_i ),
+    .init_save_i  ( init_save              ),
     .acc_clr_i    ( !busy                  ),
     .c_o          ( sram_c_wdata_o         )
   );

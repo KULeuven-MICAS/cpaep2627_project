@@ -10,6 +10,12 @@
 // main state machine. The controller uses the counters' last value
 // signals to determine when to move to the next state.
 //
+// The SRAMs have a synchronous read (one cycle latency). The counters
+// issue the A and B addresses in cycle t, and the data reaches the MAC
+// in cycle t+1. The MAC control signals (data_valid_o, init_save_o) are
+// therefore delayed by one cycle, and result_valid_o by two cycles
+// (one for the read, one for the last accumulation).
+//
 // Parameters:
 // - AddrWidth : Width of the address bus for SRAMs and counters.
 //
@@ -19,6 +25,9 @@
 // - start_i      : Start signal to initiate the GeMM operation.
 // - input_valid_i: Input valid signal indicating data is ready.
 // - result_valid_o: Result valid signal indicating output data is ready.
+// - data_valid_o : A and B read data at the MAC inputs is valid.
+// - init_save_o  : MAC should load (not accumulate) the product, i.e.
+//                  the data at the MAC inputs is the first k of an output.
 // - busy_o       : Busy signal indicating the controller is processing.
 // - done_o       : Done signal indicating completion of the GeMM operation.
 // - M_size_i     : Size of matrix M (number of rows in A and C).
@@ -37,6 +46,8 @@ module gemm_controller #(
   input  logic start_i,
   input  logic input_valid_i,
   output logic result_valid_o,
+  output logic data_valid_o,
+  output logic init_save_o,
   output logic busy_o,
   output logic done_o,
   // The target M, K, and N sizes
@@ -62,16 +73,24 @@ module gemm_controller #(
   logic clear_counters;
   logic last_counter_last_value;
 
+  // Pipeline registers that follow the read latency of the SRAMs
+  logic data_valid_q;    // A/B data at the MAC inputs is valid
+  logic first_k_q;       // ... and it is the first k of an output
+  logic last_k_q;        // ... and it is the last k of an output
+  logic result_valid_q;  // MAC output holds a finished C element
+
   // State machine states
   typedef enum logic [1:0] {
     ControllerIdle,
     ControllerBusy,
+    ControllerDrain,
     ControllerFinish
   } controller_state_t;
 
   controller_state_t current_state, next_state;
 
   assign busy_o = (current_state == ControllerBusy  ) ||
+                  (current_state == ControllerDrain ) ||
                   (current_state == ControllerFinish);
 
   //-----------------------
@@ -161,15 +180,48 @@ module gemm_controller #(
   // Note that the output of the counters are also inputs to the FSM logic.
   // Hence that is why the counters and the FSM are tightly coupled together.
   //
-  // Moreover, this FSM is more of a mealy machine, that means
-  // the output signals depend on both the current state and
-  // the inputs. This is evident in how result_valid_o and done_o
-  // are generated based on the current state and input conditions.
+  // The FSM only steps the counters. The MAC control and the
+  // result_valid_o signal come from the pipeline registers above,
+  // so after the last address is issued the FSM goes through
+  // ControllerDrain to wait for the last data and the last write.
   //
   // Depending on how you want to design your controller,
   // states and the operations can differ. Just make sure to be
   // consistent with your design choices.
   //-----------------------
+
+  //-----------------------
+  // DESIGN NOTE:
+  // Because the SRAM read is synchronous, the address issued by the
+  // counters in cycle t returns data in cycle t+1. The registers below
+  // carry the information about that address along with the data:
+  //
+  //   cycle t   : counters issue (m, n, k) as A and B addresses
+  //   cycle t+1 : A[m][k] and B[k][n] reach the MAC
+  //               data_valid_o = 1, init_save_o = 1 if k == 0
+  //   cycle t+2 : if k was K-1, the MAC output holds C[m][n]
+  //               result_valid_o = 1 (write it to SRAM C)
+  //
+  // The C address in the top module has to follow the same two cycle delay.
+  //-----------------------
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      data_valid_q   <= 1'b0;
+      first_k_q      <= 1'b0;
+      last_k_q       <= 1'b0;
+      result_valid_q <= 1'b0;
+    end else begin
+      data_valid_q   <= move_counter;
+      first_k_q      <= move_counter && (K_count_o == '0);
+      // move_N_counter is the K counter's last value on a tick
+      last_k_q       <= move_N_counter;
+      result_valid_q <= last_k_q;
+    end
+  end
+
+  assign data_valid_o   = data_valid_q;
+  assign init_save_o    = first_k_q;
+  assign result_valid_o = result_valid_q;
 
   // Main controller state machine
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -185,7 +237,6 @@ module gemm_controller #(
     next_state     = current_state;
     clear_counters = 1'b0;
     move_counter   = 1'b0;
-    result_valid_o = 1'b0;
     done_o         = 1'b0;
 
     case (current_state)
@@ -198,20 +249,20 @@ module gemm_controller #(
 
       ControllerBusy: begin
         move_counter = input_valid_i;
-        // Check if we are done
+        // The last address is issued in this cycle
         if (last_counter_last_value) begin
-          next_state = ControllerFinish;
-        end else if (input_valid_i
-                     && K_count_o == '0 
-                     && (M_count_o != '0 || N_count_o != '0)) begin
-          // Check when result_valid_o should be asserted
-          result_valid_o = 1'b1;
+          next_state = ControllerDrain;
         end
       end
 
+      // The last A/B data reaches the MAC in this cycle
+      ControllerDrain: begin
+        next_state = ControllerFinish;
+      end
+
+      // The last C element is written in this cycle (result_valid_o = 1)
       ControllerFinish: begin
         done_o         = 1'b1;
-        result_valid_o = 1'b1;
         clear_counters = 1'b1;
         next_state     = ControllerIdle;
       end
