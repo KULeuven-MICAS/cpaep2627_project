@@ -5,19 +5,23 @@ begin
   automatic int cycle_count;
   cycle_count = 0;
   // Start the GEMM operation
-  @(posedge clk_i);
+  // Drive and sample 1 time unit after the clock edge (clk_delay)
+  // so the testbench never races with the DUT flip-flops.
+  clk_delay(1);
   start = 1'b1;
-  @(posedge clk_i);
+  clk_delay(1);
   start = 1'b0;
   while (done == 1'b0) begin
-  @(posedge clk_i);
+  clk_delay(1);
   cycle_count = cycle_count + 1;
   if (cycle_count > 100000) begin
     $display("ERROR: GEMM operation timeout after %0d cycles", cycle_count);
     $fatal;
   end
   end
-  @(posedge clk_i);
+  // done_o is high in the same cycle as the last SRAM C write.
+  // Pass one more clock edge so that write has landed before verifying.
+  clk_delay(1);
   $display("GEMM operation completed in %0d cycles", cycle_count);
 end
 endtask
