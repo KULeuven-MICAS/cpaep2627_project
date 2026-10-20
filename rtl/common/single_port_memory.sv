@@ -2,8 +2,11 @@
 // Single Port Memory Module
 //
 // Description: This module implements a single-port memory with
-// configurable data width and depth. It supports synchronous write
-// operations and combinational read operations.
+// configurable data width and depth. Both reads and writes are
+// synchronous: the read data for the address presented in cycle t
+// appears on mem_rd_data_o in cycle t+1 (one cycle read latency).
+// A cycle with mem_we_i high is a write; the read output then keeps
+// its previous value, like a real single-port SRAM.
 //
 // Parameters:
 // - DataWidth: Width of the data bus (default: 8 bits)
@@ -40,9 +43,13 @@ module single_port_memory #(
   // Memory array
   logic signed [DataWidth-1:0] memory[DataDepth];
 
-  // Memory read access
-  always_comb begin
-    mem_rd_data_o = memory[mem_addr_i];
+  // Memory read access (registered, one cycle latency)
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      mem_rd_data_o <= '0;
+    end else if (!mem_we_i) begin
+      mem_rd_data_o <= memory[mem_addr_i];
+    end
   end
 
   // Memory write access
