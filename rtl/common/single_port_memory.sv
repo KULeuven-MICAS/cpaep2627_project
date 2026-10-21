@@ -71,4 +71,21 @@ module single_port_memory #(
     end
   end
 
+  //--------------------------------
+  // IMPORTANT! Energy logging
+  // For memory, energy is dependent on the number of bits during a read or write
+  // From the table we had:
+  // 1 bit read or write = 2 energy units per bit
+  // So for a 32-bit read or write, it would consume 32 * 2 = 64 energy units
+  // In this case, any change in read or write enable
+  // will trigger an energy consumption of DataWidth * 2 units.
+  //--------------------------------
+
+  // Always @ makes these asynchronous events
+  always @ (mem_re_i or mem_we_i) begin
+    if (mem_re_i || mem_we_i) begin
+      metrics_pkg::energy += DataWidth * 2;
+    end
+  end
+
 endmodule

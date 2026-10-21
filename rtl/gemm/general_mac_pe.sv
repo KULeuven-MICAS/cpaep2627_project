@@ -95,5 +95,31 @@ module general_mac_pe #(
     $display("%m added %d to area", (3*NumInputs) + OutDataWidth/32);
   end
 
+  //--------------------------------
+  // IMPORTANT! Energy logging
+  // Energy is dependent on how many MAC operations you do
+  // Operation is triggered for any change in its inputs (estimate it)
+  // Local register is triggered for every change in its output too
+  //
+  // From the table we had:
+  // one int8 x int8 = 2 energy units per op
+  // one int32 adder = 1 energy unit per op
+  // then we have the c_o output stationary accumulator which has:
+  // 1 32-bit register = 1 energy per cycle
+  // The total energy per cycle is then the sum of the MAC operations and the register update.
+  //--------------------------------
+
+  // Always @ makes these asynchronous events
+  genvar i;
+  generate  for (i = 0; i < NumInputs; i++) begin
+    always @ (a_i[i] or b_i[i]) begin
+      metrics_pkg::energy += 2 + 1; //1 MUL + 1 ADD
+    end
+    always @ (c_o) begin
+      metrics_pkg::energy += 1; // 1 energy for the register update
+    end
+  end
+  endgenerate
+
 
 endmodule

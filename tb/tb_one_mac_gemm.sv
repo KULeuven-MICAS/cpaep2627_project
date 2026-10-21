@@ -177,7 +177,9 @@ module tb_one_mac_gemm;
   initial begin
     #0;
     #0;
-    $display("\n\n------------\nAREA: %0d\n------------\n\n", metrics_pkg::area);
+    $display("------------");
+    $display(" AREA REPORT: %0d area units", metrics_pkg::area);
+    $display("------------\n\n");
   end
 
   //---------------------------
@@ -300,6 +302,14 @@ module tb_one_mac_gemm;
       // Just some trailing cycles
       // For easier monitoring in waveform
       clk_delay(10);
+
+      // Display energy result here
+      $display("------------");
+      $display(" ENERGY REPORT: %0d energy units", metrics_pkg::energy);
+      $display("------------\n");
+
+      // Reset energy when done for a task
+      metrics_pkg::energy = 0;
     end
 
     $display("All test tasks completed successfully!");
