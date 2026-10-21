@@ -1,2 +1,3 @@
+rtl/common/metrics_pkg.sv
 rtl/common/single_port_memory.sv
 tb/tb_single_port_memory.sv

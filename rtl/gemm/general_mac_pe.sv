@@ -115,11 +115,14 @@ module general_mac_pe #(
     always @ (a_i[i] or b_i[i]) begin
       metrics_pkg::energy += 2 + 1; //1 MUL + 1 ADD
     end
-    always @ (c_o) begin
-      metrics_pkg::energy += 1; // 1 energy for the register update
-    end
   end
   endgenerate
+
+  // There is only one accumulator register, so count it once
+  // (outside the loop, otherwise it counts NumInputs times)
+  always @ (c_o) begin
+    metrics_pkg::energy += 1; // 1 energy for the register update
+  end
 
 
 endmodule

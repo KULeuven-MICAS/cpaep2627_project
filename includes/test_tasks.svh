@@ -1,8 +1,10 @@
 // Task to start the accelerator
-// and wait for it to finish its task
-task automatic start_and_wait_gemm();
+// and wait for it to finish its task.
+// Returns the number of cycles it took in cycle_count.
+task automatic start_and_wait_gemm(
+  output int unsigned cycle_count
+);
 begin
-  automatic int cycle_count;
   cycle_count = 0;
   // Start the GEMM operation
   // Drive and sample 1 time unit after the clock edge (clk_delay)
@@ -22,27 +24,29 @@ begin
   // done_o is high in the same cycle as the last SRAM C write.
   // Pass one more clock edge so that write has landed before verifying.
   clk_delay(1);
-  $display("GEMM operation completed in %0d cycles", cycle_count);
 end
 endtask
 
-// Task to verify the resulting matrix
+// Task to verify the resulting matrix.
+// Returns the number of mismatches in num_errors.
 task automatic verify_result_c(
-  input logic signed [OutDataWidth-1:0] golden_data [DataDepth],
-  input logic signed [OutDataWidth-1:0] actual_data [DataDepth],
-  input logic        [   AddrWidth-1:0] num_data,
-  input logic                           fatal_on_mismatch
+  input  logic signed [OutDataWidth-1:0] golden_data [DataDepth],
+  input  logic signed [OutDataWidth-1:0] actual_data [DataDepth],
+  input  logic        [   AddrWidth-1:0] num_data,
+  input  logic                           fatal_on_mismatch,
+  output int unsigned                    num_errors
 );
 begin
-    // Compare with SRAM C contents
+  num_errors = 0;
+  // Compare with SRAM C contents
   for (int unsigned addr = 0; addr < num_data; addr++) begin
-  if (golden_data[addr] !== actual_data[addr]) begin
-    $display("ERROR: Mismatch at address %0d: expected %h, got %h",
-            addr, golden_data[addr], actual_data[addr]);
-    if (fatal_on_mismatch)
-    $fatal;
+    if (golden_data[addr] !== actual_data[addr]) begin
+      num_errors++;
+      $display("ERROR: Mismatch at address %0d: expected %h, got %h",
+               addr, golden_data[addr], actual_data[addr]);
+      if (fatal_on_mismatch)
+        $fatal;
+    end
   end
-  end
-  $display("Result matrix C verification passed!");
 end
 endtask

@@ -77,12 +77,13 @@ module single_port_memory #(
   // From the table we had:
   // 1 bit read or write = 2 energy units per bit
   // So for a 32-bit read or write, it would consume 32 * 2 = 64 energy units
-  // In this case, any change in read or write enable
-  // will trigger an energy consumption of DataWidth * 2 units.
+  // In this case, every clock cycle where the read or write enable
+  // is high is one access, and costs DataWidth * 2 units.
+  // (Counting on a change of the enable would count a long burst
+  // of back-to-back reads only once.)
   //--------------------------------
 
-  // Always @ makes these asynchronous events
-  always @ (mem_re_i or mem_we_i) begin
+  always @ (posedge clk_i) begin
     if (mem_re_i || mem_we_i) begin
       metrics_pkg::energy += DataWidth * 2;
     end

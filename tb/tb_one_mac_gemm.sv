@@ -25,13 +25,37 @@ module tb_one_mac_gemm;
   parameter int unsigned AddrWidth     = (DataDepth <= 1) ? 1 : $clog2(DataDepth);
   parameter int unsigned SizeAddrWidth = 8;
 
-  // Test Parameters
-  parameter int unsigned MaxNum   = 32;
-  parameter int unsigned NumTests = 10;
+  //---------------------------
+  // Test cases
+  //---------------------------
+  // GeMM: C (M x N) = A (M x K) * B (K x N)
+  // GeMV: y (M x 1) = A (M x K) * x (K x 1), which is a GeMM with N = 1
+  //
+  // To add a case, add a line below and bump NumCases.
+  //---------------------------
+  typedef struct {
+    string       name;
+    int unsigned M;
+    int unsigned K;
+    int unsigned N;
+  } test_case_t;
 
-  parameter int unsigned SingleM = 8;
-  parameter int unsigned SingleK = 8;
-  parameter int unsigned SingleN = 8;
+  localparam int unsigned NumCases = 6;
+
+  test_case_t test_cases [NumCases] = '{
+    //  name       M   K   N
+    '{"GeMM 1",   4, 64, 16},
+    '{"GeMM 2",  16, 64,  4},
+    '{"GeMM 3",  32, 32, 32},
+    '{"GeMV 1",  32, 32,  1},
+    '{"GeMV 2",  64, 32,  1},
+    '{"GeMV 3",  64, 64,  1}
+  };
+
+  // Per-case results, printed in the summary at the end
+  int unsigned case_cycles [NumCases];
+  real         case_energy [NumCases];
+  int unsigned case_errors [NumCases];
 
   //---------------------------
   // Wires
@@ -171,16 +195,8 @@ module tb_one_mac_gemm;
 
   // Metrics variables live in metrics_pkg (rtl/common/metrics_pkg.sv):
   // - metrics_pkg::area   starts at 0, each module adds its area at time 0
-  // - metrics_pkg::energy starts at 0, accumulated during the tests
-
-  // Reporting area (after the modules have added theirs)
-  initial begin
-    #0;
-    #0;
-    $display("------------");
-    $display(" AREA REPORT: %0d area units", metrics_pkg::area);
-    $display("------------\n\n");
-  end
+  // - metrics_pkg::energy is reset right before each case starts and read
+  //                       right after it is done, so it holds one case only
 
   //---------------------------
   // Test control
@@ -205,7 +221,8 @@ module tb_one_mac_gemm;
   //
   // We also do for-loops to run multiple tests
   // with different input parameters. In this case,
-  // we randomize the matrix sizes for each test.
+  // we loop over the fixed GeMM and GeMV sizes
+  // listed in test_cases at the top of this file.
   //
   // You can also customize in here the way
   // the memories are initialized, how the golden
@@ -221,24 +238,20 @@ module tb_one_mac_gemm;
 
     // Initial reset
     start  = 1'b0;
+    M_i    = '0;
+    K_i    = '0;
+    N_i    = '0;
     rst_ni = 1'b0;
     #50;
     rst_ni = 1'b1;
 
-    for (integer num_test = 0; num_test < NumTests; num_test++) begin
-      $display("Test number: %0d", num_test);
+    foreach (test_cases[c]) begin
+      M_i = test_cases[c].M;
+      K_i = test_cases[c].K;
+      N_i = test_cases[c].N;
 
-      if (NumTests > 1) begin
-        M_i = $urandom_range(1, MaxNum);
-        K_i = $urandom_range(1, MaxNum);
-        N_i = $urandom_range(1, MaxNum);
-      end else begin
-        M_i = SingleM;
-        K_i = SingleK;
-        N_i = SingleN;
-      end
-
-      $display("M: %0d, K: %0d, N: %0d", M_i, K_i, N_i);
+      $display("[%0s] A (%0d x %0d) * B (%0d x %0d) -> C (%0d x %0d)",
+               test_cases[c].name, M_i, K_i, K_i, N_i, M_i, N_i);
 
       //---------------------------
       // DESIGN NOTE:
@@ -290,32 +303,66 @@ module tb_one_mac_gemm;
       // Just delay 1 cycle
       clk_delay(1);
 
-      // Execute the GeMM
-      start_and_wait_gemm();
+      // Count energy for this case only: from start until done
+      metrics_pkg::energy = 0;
+      start_and_wait_gemm(case_cycles[c]);
+      case_energy[c] = metrics_pkg::energy;
 
-      test_depth = M_i * N_i;
       // Verify the result
+      test_depth = M_i * N_i;
       verify_result_c(G_memory, i_sram_c.memory, test_depth,
-                      0 // Set this to 1 to make mismatches fatal
-      );
+                      0, // Set this to 1 to make mismatches fatal
+                      case_errors[c]);
+
+      $display("[%0s] %0s: %0d cycles, %0.0f energy units\n",
+               test_cases[c].name, (case_errors[c] == 0) ? "PASS" : "FAIL",
+               case_cycles[c], case_energy[c]);
 
       // Just some trailing cycles
       // For easier monitoring in waveform
       clk_delay(10);
-
-      // Display energy result here
-      $display("------------");
-      $display(" ENERGY REPORT: %0d energy units", metrics_pkg::energy);
-      $display("------------\n");
-
-      // Reset energy when done for a task
-      metrics_pkg::energy = 0;
     end
 
-    $display("All test tasks completed successfully!");
+    print_report();
     $finish;
-    
-
   end
+
+  //---------------------------
+  // Final report
+  //---------------------------
+  // Left-align a string to a fixed width
+  // (avoids %-Ns, which some simulators format differently)
+  function automatic string pad(string str, int unsigned width);
+    while (str.len() < width) str = {str, " "};
+    return str;
+  endfunction
+
+  task automatic print_report();
+    int unsigned num_failed = 0;
+
+    $display("");
+    $display("==================================================================");
+    $display(" RESULTS");
+    $display("------------------------------------------------------------------");
+    $display(" %s | %4s %4s %4s | %8s | %12s | %s",
+             pad("Case", 8), "M", "K", "N", "Cycles", "Energy", "Check");
+    $display("------------------------------------------------------------------");
+    foreach (test_cases[c]) begin
+      $display(" %s | %4d %4d %4d | %8d | %12.0f | %s",
+               pad(test_cases[c].name, 8), test_cases[c].M, test_cases[c].K,
+               test_cases[c].N, case_cycles[c], case_energy[c],
+               (case_errors[c] == 0) ? "PASS" : "FAIL");
+      if (case_errors[c] != 0) num_failed++;
+    end
+    $display("------------------------------------------------------------------");
+    $display(" Area: %0.0f area units", metrics_pkg::area);
+    $display("==================================================================");
+    $display("");
+
+    if (num_failed != 0) begin
+      $fatal(1, "%0d of %0d cases FAILED", num_failed, NumCases);
+    end
+    $display("All %0d cases passed!", NumCases);
+  endtask
 
 endmodule
