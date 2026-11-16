@@ -21,7 +21,7 @@ module tb_one_mac_gemm;
   // General Parameters
   parameter int unsigned InDataWidth   = 8;
   parameter int unsigned OutDataWidth  = 32;
-  parameter int unsigned DataDepth     = 4096;
+  parameter int unsigned DataDepth     = 8192;
   parameter int unsigned AddrWidth     = (DataDepth <= 1) ? 1 : $clog2(DataDepth);
   parameter int unsigned SizeAddrWidth = 8;
 
@@ -56,20 +56,15 @@ module tb_one_mac_gemm;
     '{"GeMV 1",  32, 32,  1},
     '{"GeMV 2",  64, 32,  1},
     '{"GeMV 3",  64, 64,  1}
+    //DESIGN NOTE:
+    // Target workloads for the test cases uncomment for later
+    // {"GeMM WL1",   64, 64, 32},
+    // {"GeMM WL2",   64, 128, 32},
+    // {"GeMM WL3",   64, 576, 32},
+    // {"GeMV WL1",   1536, 576, 1},
+    // {"GeMV WL2",   3072, 1024, 1},
+    // {"GeMV WL3",   2816, 2048, 1}
   };
-
-  //---------------------------
-  // DESIGN NOTE:
-  // Target workloads for the test cases are commented but you can copy-paste later
-  //
-  // {"GeMM WL1",   64, 64, 32}
-  // {"GeMM WL2",   64, 128, 32}
-  // {"GeMM WL3",   64, 576, 32}
-  //
-  // {"GeMV WL1",   1536, 576, 1}
-  // {"GeMV WL2",   3072, 1024, 1}
-  // {"GeMV WL3",   2816, 2048, 1}
-  //---------------------------
 
   // Per-case results, printed in the summary at the end
   int unsigned case_cycles [NumCases];

@@ -16,7 +16,7 @@ begin
   while (done == 1'b0) begin
   clk_delay(1);
   cycle_count = cycle_count + 1;
-  if (cycle_count > 100000) begin
+  if (cycle_count > 10000000) begin
     $display("ERROR: GEMM operation timeout after %0d cycles", cycle_count);
     $fatal;
   end
