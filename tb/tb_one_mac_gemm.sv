@@ -42,6 +42,12 @@ module tb_one_mac_gemm;
 
   localparam int unsigned NumCases = 6;
 
+  //---------------------------
+  // DESIGN NOTE:
+  // Here we define the test_cases, but we give simple test cases first
+  // So you can explore and see how it can be used
+  // Replace these test cases with the target workloads in the document
+  //---------------------------
   test_case_t test_cases [NumCases] = '{
     //  name       M   K   N
     '{"GeMM 1",   4, 64, 16},
@@ -51,6 +57,19 @@ module tb_one_mac_gemm;
     '{"GeMV 2",  64, 32,  1},
     '{"GeMV 3",  64, 64,  1}
   };
+
+  //---------------------------
+  // DESIGN NOTE:
+  // Target workloads for the test cases are commented but you can copy-paste later
+  //
+  // {"GeMM WL1",   64, 64, 32}
+  // {"GeMM WL2",   64, 128, 32}
+  // {"GeMM WL3",   64, 576, 32}
+  //
+  // {"GeMV WL1",   1536, 576, 1}
+  // {"GeMV WL2",   3072, 1024, 1}
+  // {"GeMV WL3",   2816, 2048, 1}
+  //---------------------------
 
   // Per-case results, printed in the summary at the end
   int unsigned case_cycles [NumCases];
