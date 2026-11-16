@@ -76,7 +76,7 @@ module general_mac_pe #(
   end
 
   //--------------------------------
-  // IMPORTANT! Area logging
+  // DESIGN NOTE: IMPORTANT! Area logging
   // Make sure to add an area logging mechanic
   // In this scenario, we add to the shared area
   // variable in metrics_pkg (rtl/common/metrics_pkg.sv),
@@ -96,7 +96,7 @@ module general_mac_pe #(
   end
 
   //--------------------------------
-  // IMPORTANT! Energy logging
+  //  DESIGN NOTE: IMPORTANT! Energy logging
   // Energy is dependent on how many MAC operations you do
   // Operation is triggered for any change in its inputs (estimate it)
   // Local register is triggered for every change in its output too
