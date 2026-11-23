@@ -48,13 +48,9 @@ Some long log of the previous tests.
 ```
 
 ## Verilator
-Verilator runs inside a podman container. From the root of this repository, start the container:
+Verilator runs in this project. You need to download it at this [link](https://verilator.org/guide/latest/install.html).
 
-```bash
-podman run --rm -it -v "$PWD":"$PWD" -w "$PWD" c5db84ad7bce
-```
-
-Inside the container, build the testbench and run it:
+Inside the repo run:
 
 ```bash
 make TEST_MODULE=tb_one_mac_gemm all
@@ -93,9 +89,3 @@ All 6 cases passed!
 - S i m u l a t i o n   R e p o r t: Verilator 5.024 2024-04-05
 - Verilator: $finish at 482ns; walltime 0.053 s; speed 0.000 s/s
 ```
-
-The cycle counts match Questasim. The energy differs slightly because each simulator generates different random input data, and the energy counts changes on the MAC inputs. The `$finish` time is also different because Verilator's default time unit is 1 ps and Questasim's is 1 ns.
-
-Before you change the testbench, note that Verilator 5.024 does not support everything Questasim does:
-- An array of structs that contains a `string` field does not build. This is why the test case name in `tb/tb_one_mac_gemm.sv` is a packed byte field.
-- A comment that starts with the word `verilator` is read as a Verilator directive and can break the build.
