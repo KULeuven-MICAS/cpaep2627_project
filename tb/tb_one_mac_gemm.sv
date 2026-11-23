@@ -32,9 +32,13 @@ module tb_one_mac_gemm;
   // GeMV: y (M x 1) = A (M x K) * x (K x 1), which is a GeMM with N = 1
   //
   // To add a case, add a line below and bump NumCases.
+  //
+  // The name is a packed byte vector (up to 16 characters), not a string,
+  // because an array of structs with a string member fails to build in Verilator 5.024.
+  // Print it with string'(test_cases[c].name).
   //---------------------------
-  typedef struct {
-    string       name;
+  typedef struct packed {
+    logic [16*8-1:0] name;
     int unsigned M;
     int unsigned K;
     int unsigned N;
@@ -58,12 +62,12 @@ module tb_one_mac_gemm;
     '{"GeMV 3",  64, 64,  1}
     //DESIGN NOTE:
     // Target workloads for the test cases uncomment for later
-    // {"GeMM WL1",   64, 64, 32},
-    // {"GeMM WL2",   64, 128, 32},
-    // {"GeMM WL3",   64, 576, 32},
-    // {"GeMV WL1",   1536, 576, 1},
-    // {"GeMV WL2",   3072, 1024, 1},
-    // {"GeMV WL3",   2816, 2048, 1}
+    // '{"GeMM WL1",   64, 64, 32},
+    // '{"GeMM WL2",   64, 128, 32},
+    // '{"GeMM WL3",   64, 576, 32},
+    // '{"GeMV WL1",   1536, 576, 1},
+    // '{"GeMV WL2",   3072, 1024, 1},
+    // '{"GeMV WL3",   2816, 2048, 1}
   };
 
   // Per-case results, printed in the summary at the end
@@ -265,7 +269,7 @@ module tb_one_mac_gemm;
       N_i = test_cases[c].N;
 
       $display("[%0s] A (%0d x %0d) * B (%0d x %0d) -> C (%0d x %0d)",
-               test_cases[c].name, M_i, K_i, K_i, N_i, M_i, N_i);
+               string'(test_cases[c].name), M_i, K_i, K_i, N_i, M_i, N_i);
 
       //---------------------------
       // DESIGN NOTE:
@@ -329,7 +333,7 @@ module tb_one_mac_gemm;
                       case_errors[c]);
 
       $display("[%0s] %0s: %0d cycles, %0.0f energy units\n",
-               test_cases[c].name, (case_errors[c] == 0) ? "PASS" : "FAIL",
+               string'(test_cases[c].name), (case_errors[c] == 0) ? "PASS" : "FAIL",
                case_cycles[c], case_energy[c]);
 
       // Just some trailing cycles
@@ -363,7 +367,7 @@ module tb_one_mac_gemm;
     $display("------------------------------------------------------------------");
     foreach (test_cases[c]) begin
       $display(" %s | %4d %4d %4d | %8d | %12.0f | %s",
-               pad(test_cases[c].name, 8), test_cases[c].M, test_cases[c].K,
+               pad(string'(test_cases[c].name), 8), test_cases[c].M, test_cases[c].K,
                test_cases[c].N, case_cycles[c], case_energy[c],
                (case_errors[c] == 0) ? "PASS" : "FAIL");
       if (case_errors[c] != 0) num_failed++;
